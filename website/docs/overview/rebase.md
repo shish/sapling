@@ -55,7 +55,7 @@ descendants.
 Note that `sl rebase -b . -d XXX` is the same as `sl rebase -d XXX`, as `-b .`
 is the default behavior.
 
-```
+```sl-session
 # Move entire current subtree onto main.
 $ sl rebase -b . -d main
   o  91ecebda8  12 seconds ago  mary
@@ -88,7 +88,7 @@ rebase a given commit and all of its descendants.
 Below we use `-s .` to rebase the current commit, `.`, and its descendant
 `Commit D` onto `main`. All other commits are left behind.
 
-```
+```sl-session
 # Move current commit and its descendants onto main.
 $ sl rebase -s . -d main
   o  aa40b4d44  44 seconds ago  mary
@@ -121,7 +121,7 @@ exactly the commits we specified.
 Below we move the commit we're on by specifying `.` as the argument to `-r`.  We
 move it onto `main` by specifying `main` as the argument to `-d`.
 
-```
+```sl-session
 # Move just the current commit to be based on main
 $ sl rebase -r . -d main
 rebasing 6f782187aa42 "Commit C"

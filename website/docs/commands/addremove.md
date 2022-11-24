@@ -32,7 +32,7 @@ Examples:
 
 - Files bar.c and foo.c are new,  while foobar.c has been removed (without using `sl remove`)  from the repository:
 
-```
+```sl-session
 $ ls
 bar.c foo.c
 $ sl status
@@ -51,7 +51,7 @@ R foobar.c
 
 - A file foobar.c was moved to foo.c without using `sl rename`.  Afterwards, it was edited slightly:
 
-```
+```sl-session
 $ ls
 foo.c
 $ sl status

@@ -24,7 +24,7 @@ Examples:
 
 - New (unknown) files are added  automatically by `sl add`:
 
-```
+```sl-session
 $ ls
 foo.c
 $ sl status
@@ -37,7 +37,7 @@ A foo.c
 
 - Add specific files:
 
-```
+```sl-session
 $ ls
 bar.c  foo.c
 $ sl status
