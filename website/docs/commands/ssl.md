@@ -15,7 +15,7 @@ show a graph of your commits and associated GitHub pull request status
 If you have used Sapling to create pull requests for your commits, then
 you can use `sl ssl` to include the pull request status in your Smartlog:
 
-```
+```sl-session
 $ sl ssl
   @  4d9180fd8  6 minutes ago  alyssa  #178 Unreviewed
   │  adding baz

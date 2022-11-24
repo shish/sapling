@@ -21,7 +21,7 @@ Examples:
 
 Launch Sapling Web locally on port 8081:
 
-```
+```sl-session
 $ sl web --port 8081
 Listening on http://localhost:8081/?token=bbe168b7b4af1614dd5b9ddc48e7d30e&cwd=%2Fhome%2Falice%2Fsapling
 Server logs will be written to /dev/shm/tmp/isl-server-logrkrmxp/isl-server.log
@@ -29,7 +29,7 @@ Server logs will be written to /dev/shm/tmp/isl-server-logrkrmxp/isl-server.log
 
 Using the `--json` option to get the current status of Sapling Web:
 
-```
+```sl-session
 $ sl web --port 8081 --json | jq
 {
     "url": "http://localhost:8081/?token=bbe168b7b4af1614dd5b9ddc48e7d30e&cwd=%2Fhome%2Falice%2Fsapling",
@@ -44,7 +44,7 @@ $ sl web --port 8081 --json | jq
 
 Using the `--kill` option to shut down the server:
 
-```
+```sl-session
 $ sl web --port 8081 --kill
 killed ISL server process 1521158
 ```

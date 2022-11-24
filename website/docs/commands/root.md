@@ -15,8 +15,8 @@ Print the root directory of the current repository.
 
 Frequently useful in shells scripts and automation to run commands like:
 
-```
-$  ./$(sl root)/bin/script.py
+```sl-session
+$ ./$(sl root)/bin/script.py
 ```
 
 Returns 0 on success.
