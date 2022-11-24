@@ -789,11 +789,17 @@ class basefilectx(object):
 
     def __eq__(self, other):
         try:
-            return (
+            # Traditional hg, filenode includes history.
+            eq1 = (
                 type(self) == type(other)
                 and self._path == other._path
                 and self._filenode == other._filenode
             )
+            if not eq1:
+                return False
+            # For Git, also check the commit hash. `.node()` might trigger some
+            # calculations so we only do it when the above eq is not decisive.
+            return self.node() == other.node()
         except AttributeError:
             return False
 
@@ -1191,10 +1197,27 @@ def _pathhistorybaseparents(
     def parents(fctx, repo=repo, cache=cache):
         path = fctx.path()
         node = fctx.node()
-        parentnodes = cache[path](node)
-        parents = [repo[n][path] for n in parentnodes]
+        parent_fctxs = []
+        while True:
+            parentnodes = cache[path](node)
+            absent_nodes = []
+            for n in parentnodes:
+                pctx = repo[n]
+                if path in pctx:
+                    pfctx = pctx[path]
+                    parent_fctxs.append(pfctx)
+                else:
+                    absent_nodes.append(n)
+
+            if not parent_fctxs and len(absent_nodes) == 1:
+                # If a file was deleted, then re-added, try following its
+                # history before the deletion.
+                node = absent_nodes[0]
+                continue
+            break
+
         # TODO: Consider following renames.
-        return parents
+        return parent_fctxs
 
     return base, parents
 
@@ -1283,6 +1306,8 @@ class filectx(basefilectx):
 
     @propertycache
     def _changectx(self):
+        if self._changeid is None:
+            return workingctx(self._repo)
         return changectx(self._repo, self._changeid)
 
     def filectx(self, fileid, changeid=None):
