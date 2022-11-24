@@ -18,7 +18,7 @@ Rebasing requires two pieces of information:
 To illustrate the different types of rebases, assume we start with the following
 commit graph. Note that we are currently on Commit C, as indicated by the `@`
 symbol.
-```
+```sl-session
 $ sl
 o  d78f66e01  106 seconds ago  remote/main
 ╷
@@ -161,7 +161,7 @@ because commit D did not get rebased.
 #### Other
 The rebase command can move multiple stacks and subtrees in a single invocation. The tree structure will be retained across the rebase. For example, one can use the `draft()` revset to rebase all of your local commits onto a newer base commit.
 
-```
+```sl-session
 $ sl
 o  b5d600552  27 seconds ago  remote/main
 ╷

@@ -9,7 +9,7 @@ Sapling’s emphasis on editing stacks of commits means users move between commi
 
 `sl goto COMMIT` or `sl go COMMIT` is the standard way to checkout a commit in your repository.
 
-```bash
+```sl-session
 # The '@' indicates your currently checked out commit.
 $ sl
 @  b84224608  13 minutes ago  remote/main
