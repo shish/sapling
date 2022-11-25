@@ -59,6 +59,21 @@
 				}
 			}
 		},
+		'smartlog': {
+			// multiple lines, starting with "o  " or "@  ",
+			// ending with "~" on a line by itself
+			pattern: /\n *[o@]  (\n|.)*(\n~)/g,
+			inside: {
+				'sl-public': /  ([0-9a-f]{9}) /,
+				'sl-active-bookmark': /  [a-z_]+\*\n/,
+				'sl-bookmark': / remote\/([a-z0-9_]+)/,
+				'sl-diff': / #[0-9]+/,
+				'sl-signal-okay': /✓/,
+				'sl-signal-failed': /✗/,
+				'sl-signal-warning': /‼/,
+				'sl-signal-in-progress': /⋯/,
+			}
+		},
 		'comment': /#.*/,
 		'output': /.(?:.*(?:[\r\n]|.$))*/,
 	};
