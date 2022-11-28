@@ -63,13 +63,12 @@ use stats::prelude::*;
 use stats::schedule_stats_aggregation_preview;
 use tokio::runtime::Handle;
 
+use crate::args::AsRepoArg;
 use crate::args::ConfigArgs;
 use crate::args::ConfigMode;
 use crate::args::MultiRepoArgs;
 use crate::args::RepoArg;
-use crate::args::RepoArgs;
 use crate::args::RepoBlobstoreArgs;
-use crate::args::SourceAndTargetRepoArg;
 use crate::args::SourceAndTargetRepoArgs;
 use crate::extension::AppExtension;
 use crate::extension::AppExtensionArgsBox;
@@ -361,12 +360,12 @@ impl MononokeApp {
     }
 
     /// Get repo config based on user-provided arguments.
-    pub fn repo_config(&self, repo_arg: RepoArg) -> Result<(String, RepoConfig)> {
+    pub fn repo_config(&self, repo_arg: &RepoArg) -> Result<(String, RepoConfig)> {
         match repo_arg {
             RepoArg::Id(repo_id) => {
                 let repo_configs = self.repo_configs();
                 let (repo_name, repo_config) = repo_configs
-                    .get_repo_config(repo_id)
+                    .get_repo_config(*repo_id)
                     .ok_or_else(|| anyhow!("unknown repoid: {:?}", repo_id))?;
                 Ok((repo_name.clone(), repo_config.clone()))
             }
@@ -382,24 +381,13 @@ impl MononokeApp {
         let mut repos = vec![];
         let mut unique_repos = HashSet::new();
         for repo in repo_args {
-            let (name, repo_conf) = self.repo_config(repo)?;
+            let (name, repo_conf) = self.repo_config(&repo)?;
             if unique_repos.insert(name.clone()) {
                 repos.push((name, repo_conf));
             }
         }
 
         Ok(repos)
-    }
-
-    /// Get source and target repo configs based on user-provided arguments.
-    pub fn source_and_target_repo_config(
-        &self,
-        repo_arg: SourceAndTargetRepoArg,
-    ) -> Result<((String, RepoConfig), (String, RepoConfig))> {
-        Ok((
-            self.repo_config(repo_arg.source_repo)?,
-            self.repo_config(repo_arg.target_repo)?,
-        ))
     }
 
     /// Open repositories based on user-provided arguments.
@@ -410,7 +398,7 @@ impl MononokeApp {
         let args = repos_args.ids_or_names()?;
         let mut repos = vec![];
         for arg in args {
-            repos.push(self.repo_config(arg)?);
+            repos.push(self.repo_config(&arg)?);
         }
 
         let repos: HashMap<_, _> = repos.into_iter().collect();
@@ -433,11 +421,11 @@ impl MononokeApp {
     }
 
     /// Open a repository based on user-provided arguments.
-    pub async fn open_repo<Repo>(&self, repo_args: &RepoArgs) -> Result<Repo>
+    pub async fn open_repo<Repo>(&self, repo_args: &impl AsRepoArg) -> Result<Repo>
     where
         Repo: for<'builder> AsyncBuildable<'builder, RepoFactoryBuilder<'builder>>,
     {
-        let repo_arg = repo_args.id_or_name()?;
+        let repo_arg = repo_args.as_repo_arg();
         let (repo_name, repo_config) = self.repo_config(repo_arg)?;
         let common_config = self.repo_configs().common.clone();
         let repo = self
@@ -564,11 +552,10 @@ impl MononokeApp {
     where
         Repo: for<'builder> AsyncBuildable<'builder, RepoFactoryBuilder<'builder>>,
     {
-        let repos = repo_args.source_and_target_id_or_name()?;
-        let source_repo_arg = repos.source_repo;
-        let target_repo_arg = repos.target_repo;
-        let (source_repo_name, source_repo_config) = self.repo_config(source_repo_arg)?;
-        let (target_repo_name, target_repo_config) = self.repo_config(target_repo_arg)?;
+        let (source_repo_name, source_repo_config) =
+            self.repo_config(repo_args.source_repo.as_repo_arg())?;
+        let (target_repo_name, target_repo_config) =
+            self.repo_config(repo_args.target_repo.as_repo_arg())?;
         let common_config = self.repo_configs().common.clone();
         let source_repo_fut =
             self.repo_factory

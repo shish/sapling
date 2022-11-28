@@ -66,8 +66,8 @@ Configs::
     # Enable reporting of background sync progress in the smartlog.
     enableprogress = True
 
-    # Limit for number of commits in a group when pull (if unhydratedcommits enabled)
-    unhydratedpullsizelimit = 5000
+    # Limit for number of commits in a group when pull
+    pullsizelimit = 300
 
     # Show remotebookmarks in Commit Cloud Smartlog (ask the server to send them).
     # By default only remote bookmarks that belong to draft commits (scratch bookmarks) or their public roots are returned.
@@ -76,6 +76,9 @@ Configs::
     # Show all local bookmarks in Commit Cloud Smartlog (ask the server to send them).
     # By default only local bookmarks that belong to draft commits or their public roots are returned.
     sl_showallbookmarks = False
+
+    # Use EdenApi Uploads for uploading commit cloud commits during sync
+    usehttpupload = True
 
     [infinitepushbackup]
     # Whether to enable automatic backups. If this option is True then a backup
@@ -101,9 +104,6 @@ Configs::
     # Enable reporting of background backup status as a summary at the end
     # of smartlog.
     enablestatus = False
-
-    # Use EdenApi Uploads for uploading commit cloud commits during sync
-    usehttpupload = True
 """
 
 from __future__ import absolute_import
@@ -146,7 +146,7 @@ configitem("commitcloud", "automigratehostworkspace", default=False)
 configitem("commitcloud", "synccheckoutlocations", default=False)
 configitem("commitcloud", "enablestatus", default=True)
 configitem("commitcloud", "enableprogress", default=True)
-configitem("commitcloud", "unhydratedpullsizelimit", 5000)
+configitem("commitcloud", "pullsizelimit", 300)
 configitem("commitcloud", "sl_showremotebookmarks", False)
 configitem("commitcloud", "sl_showallbookmarks", False)
 configitem("commitcloud", "usehttpupload", False)
@@ -283,7 +283,7 @@ def backedup(repo, subset, x):
     path = ccutil.getnullableremotepath(repo.ui)
     if not path:
         return smartset.baseset(repo=repo)
-    heads = backupstate.BackupState(repo, path).heads
+    heads = backupstate.BackupState(repo).heads
     cl = repo.changelog
     if cl.algorithmbackend == "segments":
         backedup = repo.dageval(lambda: draft() & ancestors(heads))
@@ -301,7 +301,7 @@ def notbackedup(repo, subset, x):
         # remote, and no way to do backup, returning an empty set avoids
         # upsetting users with "not backed up" warnings.
         return smartset.baseset(repo=repo)
-    heads = backupstate.BackupState(repo, path).heads
+    heads = backupstate.BackupState(repo).heads
     cl = repo.changelog
     if cl.algorithmbackend == "segments":
         notbackedup = repo.dageval(lambda: draft() - ancestors(heads))

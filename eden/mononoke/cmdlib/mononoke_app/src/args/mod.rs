@@ -32,10 +32,10 @@ pub use mcrouter::McrouterAppExtension;
 pub use mcrouter::McrouterArgs;
 pub use mysql::MysqlArgs;
 pub use readonly::ReadonlyArgs;
+pub use repo::AsRepoArg;
 pub use repo::MultiRepoArgs;
 pub use repo::RepoArg;
 pub use repo::RepoArgs;
-pub use repo::SourceAndTargetRepoArg;
 pub use repo::SourceAndTargetRepoArgs;
 pub use repo_blobstore::RepoBlobstoreArgs;
 pub use repo_filter::RepoFilterAppExtension;
@@ -45,6 +45,8 @@ pub use tls::TLSArgs;
 
 pub use self::tunables::TunablesArgs;
 pub use crate::fb303::Fb303Args;
+pub use crate::repo_args;
+pub use crate::repo_args_optional;
 
 /// NOTE: Don't use this. "configerator:" prefix don't need to exist and is going to be removed.
 /// Pass raw path instead.

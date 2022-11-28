@@ -157,10 +157,7 @@ def _sync(
     # External services may know the workspacename to trigger the sync
     if cloudworkspace and workspacename != cloudworkspace:
         ui.status(_("current workspace is different than the workspace to sync\n"))
-        return (1, None)
-
-    # Connect to the commit cloud service.
-    serv = service.get(ui)
+        return 1, None
 
     ui.status(
         _("synchronizing '%s' with '%s'\n") % (reponame, workspacename),
@@ -182,11 +179,10 @@ def _sync(
         ui.status(
             _("this version has been already synchronized\n"), component="commitcloud"
         )
-        # It's possible that we have two cloud syncs for the same repo - one for edenfs backing repo
-        # another is for edenfs checkout. If edenfs backing repo sync runs first then it will sync
-        # all the commits and bookmarks but it won't move working copy of the checkout.
-        # The line below makes sure that working copy is updated.
-        return _maybeupdateworkingcopy(repo, startnode), None
+        return 0, None
+
+    # Connect to the commit cloud service.
+    serv = service.get(ui)
 
     origrepostate = _hashrepostate(repo)
 
@@ -196,20 +192,19 @@ def _sync(
         remotepath, connect_opts, reason="cloudsync"
     )
 
+    # Load the backup state under the repo lock to ensure a consistent view.
+    usehttp = ui.configbool("commitcloud", "usehttpupload")
+    with repo.lock():
+        state = backupstate.BackupState(repo, usehttp=usehttp)
+
     with repo.ui.timesection("commitcloud_sync_push"):
         if ui.configbool("commitcloud", "usehttpupload"):
-            uploaded, failed = upload.upload(repo, None)
-            with repo.lock():
-                state = backupstate.BackupState(repo, remotepath, usehttp=True)
-                state.update(uploaded)
+            uploaded, failed = upload.upload(repo, None, localbackupstate=state)
             # Upload returns a list of all newly uploaded heads and failed nodes (not just heads).
             # Backup returns a revset for failed. Create a revset for compatibility.
             failed = repo.revs("%ln", failed)
         else:
             # Back up all local commits that are not already backed up.
-            # Load the backup state under the repo lock to ensure a consistent view.
-            with repo.lock():
-                state = backupstate.BackupState(repo, remotepath)
             backedup, failed = backup._backup(repo, state, remotepath, getconnection)
 
     # Now that commits are backed up, check that visibleheads are enabled
@@ -486,9 +481,7 @@ def _applycloudchanges(repo, remotepath, lastsyncstate, cloudrefs, maxage, state
 
     if remotebookmarknewnodes or newheads:
         # Partition the heads into groups we can pull together.
-        headgroups = _partitionheads(
-            repo.ui, list(remotebookmarknewnodes) + newheads, cloudrefs.headdates
-        )
+        headgroups = _partitionheads(repo.ui, list(remotebookmarknewnodes) + newheads)
         _pullheadgroups(repo, remotepath, headgroups)
 
     omittedbookmarks.extend(
@@ -562,67 +555,10 @@ def _pullheadgroups(repo, remotepath, headgroups):
             repo.connectionpool.close()
 
 
-def _partitionheads(ui, heads, headdates=None):
-    if ui.configbool("infinitepush", "wantsunhydratedcommits"):
-        # partition commits to larger groups because unhydratedcommits is faster and easier to pull
-        # split by 6 month timespans with some reasonably high (configurable) sizelimit
-        return _partitionheadsgroups(
-            heads,
-            headdates,
-            sizelimit=ui.config("commitcloud", "unhydratedpullsizelimit"),
-            spanlimit=86400 * 30 * 6,
-        )
-    else:
-        return _partitionheadsgroups(heads, headdates)
-
-
-def _partitionheadsgroups(heads, headdates=None, sizelimit=4, spanlimit=86400):
-    """partition a list of heads into groups limited by size and timespan
-
-    Partitions the list of heads into a list of head groups.  Each head group
-    contains at most sizelimit heads, and all the heads have a date within
-    spanlimit of each other in the headdates map.
-
-    The head ordering is preserved, as we want to pull commits in the same order
-    so that order-dependent views like smartlog match as closely as possible on
-    different synced machines.  This may mean potential groups get split up if a
-    head with a different date is in the middle.
-
-    >>> _partitionheadsgroups([1, 2, 3, 4], {1: 1, 2: 2, 3: 3, 4: 4}, sizelimit=2, spanlimit=10)
-    [[1, 2], [3, 4]]
-    >>> _partitionheadsgroups([1, 2, 3, 4], {1: 10, 2: 20, 3: 30, 4: 40}, sizelimit=4, spanlimit=10)
-    [[1, 2], [3, 4]]
-    >>> _partitionheadsgroups([1, 2, 3, 4], {1: 10, 2: 20, 3: 30, 4: 40}, sizelimit=4, spanlimit=30)
-    [[1, 2, 3, 4]]
-    >>> _partitionheadsgroups([1, 2, 3, 4], {1: 10, 2: 20, 3: 30, 4: 40}, sizelimit=4, spanlimit=5)
-    [[1], [2], [3], [4]]
-    >>> _partitionheadsgroups([1, 2, 3, 9, 4], {1: 10, 2: 20, 3: 30, 4: 40, 9: 90}, sizelimit=8, spanlimit=30)
-    [[1, 2, 3], [9], [4]]
-    """
-    headdates = headdates or {}
-    headgroups = []
-    headsbydate = [(headdates.get(head, 0), head) for head in heads]
-    headgroup = None
-    groupstartdate = None
-    groupenddate = None
-    for date, head in headsbydate:
-        if (
-            headgroup is None
-            or len(headgroup) >= sizelimit
-            or date < groupstartdate
-            or date > groupenddate
-        ):
-            if headgroup:
-                headgroups.append(headgroup)
-            headgroup = []
-            groupstartdate = date - spanlimit
-            groupenddate = date + spanlimit
-        headgroup.append(head)
-        groupstartdate = max(groupstartdate, date - spanlimit)
-        groupenddate = min(groupenddate, date + spanlimit)
-    if headgroup:
-        headgroups.append(headgroup)
-    return headgroups
+def _partitionheads(ui, heads):
+    sizelimit = int(ui.config("commitcloud", "pullsizelimit"))
+    it = iter(heads)
+    return list(iter(lambda: tuple(itertools.islice(it, sizelimit)), ()))
 
 
 def _processremotebookmarks(repo, cloudremotebooks, lastsyncstate):
