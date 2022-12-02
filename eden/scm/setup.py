@@ -526,9 +526,9 @@ if needbuildinfo:
 try:
     from edenscm import __version__
 
-    version = __version__.version
+    edenscm_version = __version__.version
 except ImportError:
-    version = "unknown"
+    edenscm_version = "unknown"
 
 
 class asset(object):
@@ -1717,14 +1717,14 @@ if os.name == "nt":
     setupversion = version.split("+", 1)[0]
 
 if sys.platform == "darwin" and os.path.exists("/usr/bin/xcodebuild"):
-    version = runcmd(["/usr/bin/xcodebuild", "-version"], {})[1].splitlines()
-    if version:
-        version = version[0]
-        version = version.decode("utf-8")
-        xcode4 = version.startswith("Xcode") and StrictVersion(
-            version.split()[1]
+    xcode_version = runcmd(["/usr/bin/xcodebuild", "-version"], {})[1].splitlines()
+    if xcode_version:
+        xcode_version = xcode_version[0]
+        xcode_version = xcode_version.decode("utf-8")
+        xcode4 = xcode_version.startswith("Xcode") and StrictVersion(
+            xcode_version.split()[1]
         ) >= StrictVersion("4.0")
-        xcode51 = re.match(r"^Xcode\s+5\.1", version) is not None
+        xcode51 = re.match(r"^Xcode\s+5\.1", xcode_version) is not None
     else:
         # xcodebuild returns empty on OS X Lion with XCode 4.3 not
         # installed, but instead with only command-line tools. Assume
@@ -1832,7 +1832,7 @@ rustextbinaries = [
         rename=hgname,
         features=hgmainfeatures,
         env={
-            "SAPLING_VERSION": version,
+            "SAPLING_VERSION": edenscm_version,
             "SAPLING_VERSION_HASH": versionhash,
         },
     ),
