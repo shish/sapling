@@ -8,11 +8,14 @@ from typing import List, Optional, Tuple
 
 from . import edenapi_upload, error, hg, mutation, phases, scmutil
 from .bookmarks import readremotenames, saveremotenames
-from .i18n import _
+from .i18n import _, _n
 from .node import bin, hex, nullhex, short
 
 
 MUTATION_KEYS = {"mutpred", "mutuser", "mutdate", "mutop", "mutsplit"}
+
+CFG_SECTION = "push"
+CFG_KEY_ENABLE_DEBUG_INFO = "enable_debug_info"
 
 
 def get_edenapi_for_dest(repo, _dest):
@@ -44,6 +47,24 @@ def push(repo, dest, head_node, remote_bookmark, force=False, opargs=None):
         raise error.UnsupportedEdenApiPush(
             _("merge commit is not supported by EdenApi push yet")
         )
+
+    if ui.configbool(CFG_SECTION, CFG_KEY_ENABLE_DEBUG_INFO):
+        commit_infos = []
+        for node in draft_nodes:
+            ctx = repo[node]
+            line = "  " + "|".join(
+                [
+                    str(ctx),
+                    ctx.phasestr(),
+                    ",".join(str(p) for p in ctx.parents()),
+                    ",".join(short(n) for n in ctx.mutationpredecessors()),
+                ]
+            )
+            commit_infos.append(line)
+        if commit_infos:
+            ui.write(_("push commits debug info:\n") + "\n".join(commit_infos) + "\n")
+        else:
+            ui.write(_(f"head commit {short(head_node)} is not a draft commit\n"))
 
     # upload revs via EdenApi
 
@@ -133,14 +154,22 @@ def push_rebase(repo, dest, head_node, stack_nodes, remote_bookmark, opargs=None
     ui, edenapi = repo.ui, repo.edenapi
     bookmark = remote_bookmark
     wnode = repo["."].node()
-    ui.status(_("updating remote bookmark %s\n") % bookmark)
 
     # according to the Mononoke API (D23813368), base is the parent of the bottom of the stack
     # that is to be landed.
     # It's guaranteed there is only one base for a linear stack of draft nodes
     base = repo.dageval(lambda: parents(roots(stack_nodes))).last()
-
     pushvars = parse_pushvars(opargs.get("pushvars"))
+
+    ui.status(
+        _n(
+            "pushrebasing stack (%s, %s] (%d commit) to remote bookmark %s\n",
+            "pushrebasing stack (%s, %s] (%d commits) to remote bookmark %s\n",
+            len(stack_nodes),
+        )
+        % (short(base), short(head_node), len(stack_nodes), remote_bookmark)
+    )
+
     response = edenapi.landstack(bookmark, head=head_node, base=base, pushvars=pushvars)
 
     result = response["data"]

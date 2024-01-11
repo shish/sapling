@@ -9,9 +9,10 @@ from __future__ import absolute_import
 
 import os
 import sys
+from enum import Enum
 from typing import Union
 
-from sapling import error, pycompat
+from sapling import error, pycompat, scmutil
 from sapling.i18n import _
 
 
@@ -20,20 +21,9 @@ if not pycompat.iswindows:
     import tty
 
 
-def upline(n: int = 1) -> None:
-    w = sys.stdout
-    # ANSI
-    # ESC[#A : up # lines
-    w.write("\033[%dA" % n)
-
-
-def clearline(n: int = 1) -> None:
-    w = sys.stdout
-    # ANSI
-    # ESC[#A : up # lines
-    # ESC[K : clear to end of line
-    for i in range(n):
-        w.write("\033[1A\033[K")
+def clearscreen():
+    sys.stdout.write("\033[2J")  # clear screen
+    sys.stdout.write("\033[;H")  # move cursor
 
 
 # From:
@@ -109,11 +99,18 @@ def getchar(fd: int) -> Union[None, bytes, str]:
 # End of code from link
 
 
+class Alignment(Enum):
+    top = 1
+    bottom = 2
+
+
 class viewframe:
     # Useful Keycode Constants
     KEY_J = b"j"
     KEY_K = b"k"
     KEY_Q = b"q"
+    KEY_R = b"r"
+    KEY_S = b"s"
     KEY_RETURN = b"\r"
     KEY_RIGHT = b"\x1b[C"
     KEY_LEFT = b"\x1b[D"
@@ -127,7 +124,8 @@ class viewframe:
         repo.ui.disablepager()
 
     def render(self):
-        # returns string to print
+        # returns list of strings (rows) to print, and an optional tuple of (index, position)
+        # Ensures that the row `index` is aligned to the `position` side of the screen if the list is longer than the screen height
         pass
 
     def handlekeypress(self, key):
@@ -139,33 +137,46 @@ class viewframe:
         self._active = False
 
 
+def _write_output(viewobj):
+    screensize = scmutil.termsize(viewobj.ui)[1]
+    clearscreen()
+    slist, alignment = viewobj.render()
+    if alignment is not None and len(slist) > screensize:
+        index, direction = alignment
+        if direction == Alignment.top:
+            end = min(len(slist), index + screensize)
+            start = min(index, end - screensize)
+        elif direction == Alignment.bottom:
+            start = max(0, index - screensize)
+            end = max(index, start + screensize)
+        slist = slist[start:end]
+
+    sys.stdout.write("\n".join("\r" + line for line in slist))
+    sys.stdout.flush()
+
+
 def view(viewobj) -> None:
     if pycompat.iswindows:
         raise error.Abort(_("interactive UI does not support Windows"))
     if viewobj.ui.pageractive:
         raise error.Abort(_("interactiveui doesn't work with pager"))
+    # Enter alternate screen
+    # TODO: Investigate portability - may only work for xterm
+    sys.stdout.write("\033[?1049h\033[H")
     # disable line wrapping
     # this is from curses.tigetstr('rmam')
     sys.stdout.write("\x1b[?7l")
-    s = viewobj.render()
-    sys.stdout.write(s)
-    while viewobj._active:
-        output = getchar(sys.stdin.fileno())
-        viewobj.handlekeypress(output)
-        if not viewobj._active:
-            break
-        linecount = s.count("\n")
-        s = viewobj.render()
-        newlinecount = s.count("\n")
-        if newlinecount < linecount:
-            clearline(linecount - newlinecount)
-            upline(newlinecount)
-        else:
-            upline(linecount)
-        slist = s.splitlines(True)
-        sys.stdout.write("".join("\033[K" + line for line in slist))
+    sys.stdout.write("\033[?25l")  # hide cursor
+    try:
+        while viewobj._active:
+            _write_output(viewobj)
+            output = getchar(sys.stdin.fileno())
+            viewobj.handlekeypress(output)
+    finally:
+        sys.stdout.write("\033[?25h")  # show cursor
+        # re-enable line wrapping
+        # this is from curses.tigetstr('smam')
+        sys.stdout.write("\x1b[?7h")
         sys.stdout.flush()
-    # re-enable line wrapping
-    # this is from curses.tigetstr('smam')
-    sys.stdout.write("\x1b[?7h")
-    sys.stdout.flush()
+        # Exit alternate screen
+        sys.stdout.write("\033[?1049l")

@@ -294,6 +294,15 @@ elif sys.platform.startswith("darwin"):
         # S362020: Redirect tests leave behind garbage on macOS Sandcastle hosts
         TEST_DISABLED["redirect_test.RedirectTest"] = True
 
+    # Requires sudo. We don't have access to passwordless `sudo` on macOS
+    # Sandcastle hosts, so we should disable this test.
+    TEST_DISABLED["hg.storage_engine_test.FailsToOpenLocalStoreTestWithMounts"] = [
+        "test_restart_eden_with_local_store_that_fails_to_open"
+    ]
+    TEST_DISABLED["hg.storage_engine_test.FailsToOpenLocalStoreTest"] = [
+        "test_restart_eden_with_local_store_that_fails_to_open"
+    ]
+
 
 # Windows specific tests
 if sys.platform != "win32":
@@ -458,6 +467,18 @@ FILTEREDFS_TEST_DISABLED = {
         "test_merge_update_untracked_file_with_conflict_in_destination",
         "test_merge_update_added_file_with_conflict_in_destination",
         "test_merge_update_untracked_file_with_conflict_in_destination",
+    ],
+    # These tests will behave the exact same on FilteredFS. Duplicating them can
+    # cause issues on macOS (too many APFS subvolumes), so we'll disable the
+    # FilteredHg variants for now.
+    "redirect_test.RedirectTest": [
+        "test_list",
+        "test_fixup_mounts_things",
+        "test_add_absolute_target",
+        "test_redirect_no_config_dir",
+        "test_unmount_unmounts_things",
+        "test_list_no_legacy_bind_mounts",
+        "test_disallow_bind_mount_outside_repo",
     ],
 }
 for (testModule, disabled) in FILTEREDFS_TEST_DISABLED.items():

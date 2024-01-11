@@ -1637,8 +1637,8 @@ struct MegarepoRemergeSourceParams {
   5: optional string message;
 }
 
-/// Params for upload_git_object method
-struct UploadGitObjectParams {
+/// Params for repo_upload_non_blob_git_object method
+struct RepoUploadNonBlobGitObjectParams {
   /// The raw bytes of the hash of the git object that is being uploaded.
   /// In git terminology, this is the git object_id in bytes
   1: binary git_hash;
@@ -2032,7 +2032,7 @@ struct MegarepoRemergeSourcePollResponse {
   1: optional MegarepoRemergeSourceResult result;
 }
 
-struct UploadGitObjectResponse {}
+struct RepoUploadNonBlobGitObjectResponse {}
 
 struct RepoUploadPackfileBaseItemResponse {}
 
@@ -2515,9 +2515,9 @@ service SourceControlService extends fb303_core.BaseService {
 
   /// Upload raw git object to Mononoke data store for back-and-forth translation.
   /// Not to be used for uploading raw file content blobs.
-  UploadGitObjectResponse upload_git_object(
+  RepoUploadNonBlobGitObjectResponse repo_upload_non_blob_git_object(
     1: RepoSpecifier repo,
-    2: UploadGitObjectParams params,
+    2: RepoUploadNonBlobGitObjectParams params,
   ) throws (1: RequestError request_error, 2: InternalError internal_error);
 
   /// Upload packfile base item corresponding to git object to Mononoke data store

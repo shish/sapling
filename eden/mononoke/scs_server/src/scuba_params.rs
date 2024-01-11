@@ -584,7 +584,7 @@ impl AddScubaParams for thrift::MegarepoReadConfigParams {
     }
 }
 
-impl AddScubaParams for thrift::UploadGitObjectParams {
+impl AddScubaParams for thrift::RepoUploadNonBlobGitObjectParams {
     fn add_scuba_params(&self, scuba: &mut MononokeScubaSampleBuilder) {
         scuba.add("param_git_object_id", hex(&self.git_hash));
     }

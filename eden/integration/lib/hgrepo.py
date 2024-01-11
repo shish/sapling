@@ -240,9 +240,9 @@ class HgRepository(repobase.Repository):
         hgrc["remotefilelog"]["reponame"] = "test"
         hgrc["remotefilelog"]["cachepath"] = cachepath
 
-        # Use Rust status internally for all commands.
-        hgrc.setdefault("workingcopy", {})
-        hgrc["workingcopy"]["rust-status"] = "true"
+        # Use Rust status.
+        hgrc.setdefault("status", {})
+        hgrc["status"]["use-rust"] = "true"
 
         # Use (native) Rust checkout whenever possible
         hgrc.setdefault("checkout", {})

@@ -84,6 +84,12 @@ use status::Status;
 // Affects progress update frequency and thread count for small checkout.
 const VFS_BATCH_SIZE: usize = 128;
 
+pub enum CheckoutMode {
+    Force,
+    NoConflict,
+    Merge,
+}
+
 /// Contains lists of files to be removed / updated during checkout.
 pub struct CheckoutPlan {
     /// Files to be removed.
@@ -626,7 +632,6 @@ impl CheckoutProgress {
     /// path and a trailing \0 character.
     ///
     ///   <40_char_hg_hash> <mtime_in_millis> <written_file_length> <file_path>\0
-    ///
     pub fn load(path: &Path, vfs: VFS) -> Result<Self> {
         let mut state: HashMap<RepoPathBuf, (HgId, u128, u64)> = HashMap::new();
 
@@ -839,16 +844,11 @@ pub fn checkout(
     repo: &mut Repo,
     wc: &LockedWorkingCopy,
     target_commit: HgId,
+    update_mode: CheckoutMode,
 ) -> Result<Option<(usize, usize)>> {
     #[cfg(feature = "eden")]
     if repo.requirements.contains("eden") {
-        edenfs::edenfs_checkout(
-            io,
-            repo,
-            wc,
-            target_commit,
-            edenfs_client::CheckoutMode::Force,
-        )?;
+        edenfs::edenfs_checkout(io, repo, wc, target_commit, update_mode)?;
         return Ok(None);
     }
 

@@ -940,10 +940,10 @@ impl SourceControlService for SourceControlServiceThriftImpl {
             token: thrift::MegarepoRemergeSourceToken,
         ) -> Result<thrift::MegarepoRemergeSourcePollResponse, service::MegarepoRemergeSourcePollExn>;
 
-        async fn upload_git_object(
+        async fn repo_upload_non_blob_git_object(
             repo: thrift::RepoSpecifier,
-            params: thrift::UploadGitObjectParams,
-        ) -> Result<thrift::UploadGitObjectResponse, service::UploadGitObjectExn>;
+            params: thrift::RepoUploadNonBlobGitObjectParams,
+        ) -> Result<thrift::RepoUploadNonBlobGitObjectResponse, service::RepoUploadNonBlobGitObjectExn>;
 
         async fn create_git_tree(
             repo: thrift::RepoSpecifier,
